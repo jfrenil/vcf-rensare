@@ -1,8 +1,16 @@
-# VCF-rensare
+# VCF Cleaner / VCF-rensare
+
+A standalone tool for cleaning up, editing and merging contacts in `.vcf` files (vCard 2.1 / 3.0 / 4.0). Open `vcf-rensare.html` in any browser – no installation, no dependencies, no connection needed. **All processing happens 100 % locally in the browser; no data leaves your computer.**
+
+The tool is available in **Swedish** and **English**. The language is detected from the browser, or can be chosen with the switch in the header, via `?lang=sv` / `?lang=en`, or via the paths `/sv/` and `/en/` (e.g. on GitHub Pages).
+
+---
 
 Ett fristående verktyg för att städa, redigera och slå ihop kontakter i `.vcf`-filer (vCard 2.1 / 3.0 / 4.0). Öppna `vcf-rensare.html` i valfri webbläsare – ingen installation, inga beroenden, ingen uppkoppling. **All bearbetning sker 100 % lokalt i webbläsaren; ingen data lämnar din dator.**
 
-## Användning
+Verktyget finns på **svenska** och **engelska**. Språket väljs automatiskt från webbläsaren, eller via växlaren i sidhuvudet, `?lang=sv` / `?lang=en`, eller sökvägarna `/sv/` och `/en/` (t.ex. på GitHub Pages).
+
+## Användning / Usage
 
 1. Öppna `vcf-rensare.html` i webbläsaren (dubbelklicka eller högerklicka → Öppna med).
 2. Dra in en eller flera `.vcf`-filer (t.ex. gamla exporter från telefonen).
@@ -29,9 +37,11 @@ Spara alltid en säkerhetskopia av din ursprungliga `.vcf` innan du städar – 
 
 | Fil | Beskrivning |
 |-----|-------------|
-| `vcf-rensare.html` | Själva verktyget (öppnas i webbläsaren) |
+| `vcf-rensare.html` | Själva verktyget (öppnas i webbläsaren) – innehåller både svenska och engelska |
+| `index.html` | Omdirigerar till verktyget |
+| `sv/index.html` · `en/index.html` | Språkstubbar: omdirigerar till `?lang=sv` / `?lang=en` |
 | `exempel-kontakter.vcf` | Exempelfil att prova med – innehåller blandade vCard-versioner och dubbletter |
-| `test-vcf-cleaner.js` | Testsvit för kärnlogiken (parser, dubbletter, sammanslagning, export) |
+| `test-vcf-cleaner.js` | Testsvit för kärnlogiken (parser, dubbletter, sammanslagning, export, i18n) |
 
 ## Köra testerna
 

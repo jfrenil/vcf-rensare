@@ -11,6 +11,7 @@ const corePath = path.join(os.tmpdir(), 'vcf-core-under-test.js');
 fs.writeFileSync(corePath, scriptMatch[1]);
 require(corePath);
 const V = globalThis.VCFCleaner;
+V.setLang('sv');
 
 let passed = 0, failed = 0;
 function ok(name, cond, extra) {
@@ -125,7 +126,7 @@ const contacts = [a, a2, b, c];
 const groups = V.findDuplicateGroups(contacts);
 eq('en dubblettgrupp', groups.length, 1);
 eq('gruppen innehåller båda', groups[0].contacts.length, 2);
-eq('konfidens hög', groups[0].confidence, 'Hög');
+eq('konfidens hög', groups[0].confidence, 'high');
 
 console.log('== Sammanslagning ==');
 const m = V.mergeContacts([a, a2]);
@@ -187,12 +188,30 @@ const outTrash = V.serializeVCF([trashed, b]);
 eq('papperskorg exporteras inte', V.parseVCF(outTrash).length, 1);
 
 console.log('== CSV ==');
+V.setLang('sv');
 const csv = V.serializeCSV([cards1[0], b]);
 const csvLines = csv.split('\r\n');
-eq('csv rubrikrad', csvLines[0], 'Namn,Förnamn,Efternamn,Telefon,E-post,Organisation,Anteckning');
+eq('csv rubrikrad (sv)', csvLines[0], 'Namn,Förnamn,Efternamn,Telefon,E-post,Organisation,Anteckning');
 eq('csv antal rader', csvLines.filter(Boolean).length, 3);
 ok('csv citerar fält med komma', csv.indexOf('"Acme AB, Utveckling"') !== -1, csvLines[1]);
 ok('csv förnamn/efternamn', csvLines[1].split(',')[1] === 'Anna' && csvLines[1].split(',')[2] === 'Andersson', csvLines[1]);
+
+console.log('== Flerspråkighet (i18n) ==');
+V.setLang('en');
+eq('språk sätts till en', V.getLang(), 'en');
+const gEn = V.findDuplicateGroups(contacts);
+ok('engelska orsaker', gEn[0].reasons.some(r => r === 'same phone number') && gEn[0].reasons.some(r => r === 'same email'), gEn[0].reasons.join('|'));
+const csvEn = V.serializeCSV([b]).split('\r\n');
+eq('csv rubrikrad (en)', csvEn[0], 'Name,First name,Last name,Phone,Email,Organization,Note');
+eq('engelsk titel-sträng', V.t('doc_title'), 'VCF Cleaner – tidy up and merge contacts (local)');
+eq('engelsk parameteriserad sträng', V.t('stats', 5, 2, 1), '5 contacts · 2 duplicate suggestions · 1 in trash');
+V.setLang('sv');
+eq('tillbaka till svenska', V.t('doc_title'), 'VCF-rensare – städa och slå ihop kontakter (lokalt)');
+eq('parameteriserad sträng (sv)', V.t('toast_loaded', 3, 10), '3 kontakter inlästa (10 totalt).');
+const gSv = V.findDuplicateGroups(contacts);
+ok('svenska orsaker', gSv[0].reasons.some(r => r === 'samma telefonnummer'), gSv[0].reasons.join('|'));
+ok('ordlistor har samma nycklar', JSON.stringify(Object.keys(V.I18N.sv).sort()) === JSON.stringify(Object.keys(V.I18N.en).sort()),
+  'nycklar skiljer sig mellan sv och en');
 
 console.log('== Edge cases ==');
 eq('tom fil ger inga kort', V.parseVCF('').length, 0);

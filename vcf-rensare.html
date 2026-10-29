@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VCF-rensare – städa och slå ihop kontakter (lokalt)</title>
+<title id="doc-title">VCF-rensare – städa och slå ihop kontakter (lokalt)</title>
 <style>
 :root {
   --bg: #f4f5f7; --panel: #ffffff; --ink: #1c1e21; --muted: #65676b;
@@ -46,9 +46,9 @@ nav.tabs button { border: none; background: none; border-radius: 8px 8px 0 0; pa
 nav.tabs button.active { color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); background: var(--panel); }
 .badge { display: inline-block; background: var(--chip); border-radius: 999px; padding: 1px 9px; font-size: .75rem; font-weight: 700; margin-left: 6px; }
 .badge.high { background: #fce8e6; color: var(--danger-dark); }
-.badge.med { background: #fef3e0; color: var(--warn); }
+.badge.medium { background: #fef3e0; color: var(--warn); }
 .badge.low { background: var(--chip); color: var(--muted); }
-@media (prefers-color-scheme: dark) { .badge.high { background: #4a2320; } .badge.med { background: #4a3a1a; } }
+@media (prefers-color-scheme: dark) { .badge.high { background: #4a2320; } .badge.medium { background: #4a3a1a; } }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -84,46 +84,262 @@ td .sub { color: var(--muted); font-size: .8rem; }
 #toast.err { background: var(--danger-dark); }
 footer { text-align: center; color: var(--muted); font-size: .78rem; padding: 18px; }
 .hidden { display: none !important; }
+#lang-switch { float: right; font-size: .8rem; }
+#lang-switch a { color: var(--accent); text-decoration: none; font-weight: 600; }
+#lang-switch a.active { color: var(--muted); pointer-events: none; }
 </style>
 </head>
 <body>
 <header>
+  <span id="lang-switch"><a href="?lang=sv" data-lang="sv">Svenska</a> · <a href="?lang=en" data-lang="en">English</a></span>
   <h1>VCF-rensare</h1>
-  <p>Städa, redigera och slå ihop kontakter från .vcf-filer – 100 % lokalt i din webbläsare, ingen data lämnar datorn.</p>
+  <p data-i18n="header_sub">Städa, redigera och slå ihop kontakter från .vcf-filer – 100 % lokalt i din webbläsare, ingen data lämnar datorn.</p>
 </header>
 <main>
-  <div id="dropzone" tabindex="0" role="button" aria-label="Ladda upp VCF-filer">
-    <div class="big">Dra hit dina .vcf-filer här, eller klicka för att välja</div>
-    <div class="hint">Flera filer går bra – kontakterna slås ihop till en lista innan du städar. Stöder vCard 2.1, 3.0 och 4.0.</div>
+  <div id="dropzone" tabindex="0" role="button" data-i18n-aria="aria_dropzone" aria-label="Ladda upp VCF-filer">
+    <div class="big" data-i18n="drop_big">Dra hit dina .vcf-filer här, eller klicka för att välja</div>
+    <div class="hint" data-i18n="drop_hint">Flera filer går bra – kontakterna slås ihop till en lista innan du städar. Stöder vCard 2.1, 3.0 och 4.0.</div>
   </div>
   <input type="file" id="file-input" accept=".vcf,.vcard,text/vcard,text/x-vcard" multiple class="hidden">
 
   <div id="app" class="hidden">
     <div class="toolbar">
       <span class="stats" id="stats"></span>
-      <input type="search" id="search" placeholder="Sök namn, telefon, e-post…" style="max-width:260px">
-      <button data-action="export-vcf" class="primary">Ladda ner renad VCF</button>
-      <button data-action="export-csv">Exportera CSV</button>
+      <input type="search" id="search" data-i18n-placeholder="search_placeholder" placeholder="Sök namn, telefon, e-post…" style="max-width:260px">
+      <button data-action="export-vcf" class="primary" data-i18n="export_vcf">Ladda ner renad VCF</button>
+      <button data-action="export-csv" data-i18n="export_csv">Exportera CSV</button>
     </div>
     <nav class="tabs">
-      <button data-view="contacts" id="tab-contacts">Kontakter</button>
-      <button data-view="dupes" id="tab-dupes">Föreslagna dubbletter<span class="badge" id="badge-dupes">0</span></button>
-      <button data-view="trash" id="tab-trash">Papperskorg<span class="badge" id="badge-trash">0</span></button>
+      <button data-view="contacts" id="tab-contacts" data-i18n="tab_contacts">Kontakter</button>
+      <button data-view="dupes" id="tab-dupes"><span data-i18n="tab_dupes">Föreslagna dubbletter</span><span class="badge" id="badge-dupes">0</span></button>
+      <button data-view="trash" id="tab-trash"><span data-i18n="tab_trash">Papperskorg</span><span class="badge" id="badge-trash">0</span></button>
     </nav>
     <div class="toolbar" id="bulk-bar" style="display:none">
       <span class="stats" id="bulk-info"></span>
-      <button data-action="delete-selected" class="danger">Radera markerade</button>
-      <button data-action="clear-selection">Avmarkera alla</button>
+      <button data-action="delete-selected" class="danger" data-i18n="bulk_delete">Radera markerade</button>
+      <button data-action="clear-selection" data-i18n="bulk_clear">Avmarkera alla</button>
     </div>
     <div id="view"></div>
   </div>
 </main>
 <div id="modal" role="dialog" aria-modal="true"></div>
 <div id="toast" role="status"></div>
-<footer>All bearbetning sker lokalt i webbläsaren. Spara alltid en säkerhetskopia av din ursprungliga .vcf innan du städar.</footer>
+<footer data-i18n="footer">All bearbetning sker lokalt i webbläsaren. Spara alltid en säkerhetskopia av din ursprungliga .vcf innan du städar.</footer>
 <script>
 (function () {
 'use strict';
+
+const I18N = {
+  sv: {
+    doc_title: 'VCF-rensare – städa och slå ihop kontakter (lokalt)',
+    header_sub: 'Städa, redigera och slå ihop kontakter från .vcf-filer – 100 % lokalt i din webbläsare, ingen data lämnar datorn.',
+    aria_dropzone: 'Ladda upp VCF-filer',
+    drop_big: 'Dra hit dina .vcf-filer här, eller klicka för att välja',
+    drop_hint: 'Flera filer går bra – kontakterna slås ihop till en lista innan du städar. Stöder vCard 2.1, 3.0 och 4.0.',
+    drop_big_added: 'Lägg till fler .vcf-filer – klicka eller dra hit',
+    drop_hint_added: 'Nya kontakter läggs till befintliga och dubblettförslagen uppdateras.',
+    search_placeholder: 'Sök namn, telefon, e-post…',
+    export_vcf: 'Ladda ner renad VCF',
+    export_csv: 'Exportera CSV',
+    tab_contacts: 'Kontakter',
+    tab_dupes: 'Föreslagna dubbletter',
+    tab_trash: 'Papperskorg',
+    bulk_delete: 'Radera markerade',
+    bulk_clear: 'Avmarkera alla',
+    footer: 'All bearbetning sker lokalt i webbläsaren. Spara alltid en säkerhetskopia av din ursprungliga .vcf innan du städar.',
+    stats: '{0} kontakter · {1} dubblettförslag · {2} i papperskorgen',
+    empty_search: 'Inga kontakter matchar sökningen.',
+    empty_none: 'Inga kontakter än. Lägg till fler .vcf-filer ovan.',
+    col_select_all: 'Markera alla',
+    col_name: 'Namn',
+    col_phone: 'Telefon',
+    col_email: 'E-post',
+    col_org: 'Organisation',
+    no_name: '(namnlös kontakt)',
+    sub_fields: 'vCard {0} · {1} fält',
+    edit: 'Redigera',
+    move_to_trash: 'Flytta till papperskorgen',
+    bulk_info: '{0} markerade',
+    dupes_none: '🎉 Inga föreslagna dubbletter – din lista ser ren ut!',
+    safe_found: '{0} grupper med hög säkerhet hittades.',
+    merge_safe: 'Slå ihop alla säkra grupper ({0})',
+    group_count: '{0} kontakter',
+    confidence_badge: 'Säkerhet: {0}',
+    conf_high: 'Hög',
+    conf_medium: 'Medel',
+    conf_low: 'Låg',
+    chip_hint: 'Välj primär med radioknappen',
+    card_phone: 'Telefon',
+    card_email: 'E-post',
+    card_org: 'Organisation',
+    card_note: 'Anteckning',
+    card_other: 'Övrigt',
+    keep_primary: 'Behåll som primär',
+    merge_selected: 'Slå ihop markerade ({0})',
+    dismiss_group: 'Avfärda – inte dubbletter',
+    trash_empty: 'Papperskorgen är tom.',
+    trash_info: '{0} kontakter i papperskorgen – de exporteras inte.',
+    empty_trash: 'Töm papperskorgen permanent',
+    restore: 'Återställ',
+    purge: 'Radera permanent',
+    edit_title: 'Redigera kontakt',
+    fld_name: 'Namn',
+    fld_org: 'Organisation (semikolon mellan fälten, t.ex. Företag;Avdelning)',
+    fld_title: 'Titel',
+    fld_tels: 'Telefonnummer (ett per rad)',
+    fld_emails: 'E-postadresser (en per rad)',
+    fld_note: 'Anteckning',
+    cancel: 'Avbryt',
+    save: 'Spara',
+    toast_updated: 'Kontakt uppdaterad.',
+    toast_trashed: 'Kontakt flyttad till papperskorgen.',
+    toast_restored: 'Kontakt återställd.',
+    toast_need_two: 'Markera minst två kontakter att slå ihop.',
+    toast_merged: 'Slog ihop {0} kontakter till en. Sammanslagna kort ligger i papperskorgen om du ångrar dig.',
+    toast_no_safe: 'Inga grupper med hög säkerhet.',
+    toast_safe_merged: 'Slog ihop {0} säkra dubblettgrupper. Originalen ligger i papperskorgen.',
+    toast_read_error: 'Kunde inte läsa {0}',
+    toast_no_contacts: 'Inga kontakter hittades i filerna.',
+    toast_loaded: '{0} kontakter inlästa ({1} totalt).',
+    toast_dismissed: 'Grupp avfärdad.',
+    toast_bulk_trashed: 'Markerade kontakter flyttade till papperskorgen.',
+    toast_trash_emptied: 'Papperskorgen tömd.',
+    toast_nothing_export: 'Inga kontakter att exportera.',
+    toast_vcf_dl: 'VCF nedladdad – {0} kontakter.',
+    toast_csv_dl: 'CSV nedladdad – {0} kontakter.',
+    filename_vcf: 'kontakter-rensade.vcf',
+    filename_csv: 'kontakter.csv',
+    csv_name: 'Namn', csv_given: 'Förnamn', csv_family: 'Efternamn', csv_phone: 'Telefon', csv_email: 'E-post', csv_org: 'Organisation', csv_note: 'Anteckning',
+    reason_email: 'samma e-post',
+    reason_phone: 'samma telefonnummer',
+    reason_name_exact: 'exakt samma namn',
+    reason_name_similar: 'liknande namn',
+    reason_name_last: 'samma efternamn + förnamnsinitial',
+    reason_org: 'samma organisation'
+  },
+  en: {
+    doc_title: 'VCF Cleaner – tidy up and merge contacts (local)',
+    header_sub: 'Clean up, edit and merge contacts from .vcf files – 100 % local in your browser, no data leaves your computer.',
+    aria_dropzone: 'Upload VCF files',
+    drop_big: 'Drag your .vcf files here, or click to choose',
+    drop_hint: 'Multiple files work – contacts are combined into one list before you clean up. Supports vCard 2.1, 3.0 and 4.0.',
+    drop_big_added: 'Add more .vcf files – click or drag here',
+    drop_hint_added: 'New contacts are added to the existing ones and duplicate suggestions are updated.',
+    search_placeholder: 'Search name, phone, email…',
+    export_vcf: 'Download cleaned VCF',
+    export_csv: 'Export CSV',
+    tab_contacts: 'Contacts',
+    tab_dupes: 'Suggested duplicates',
+    tab_trash: 'Trash',
+    bulk_delete: 'Delete selected',
+    bulk_clear: 'Clear selection',
+    footer: 'All processing happens locally in the browser. Always keep a backup of your original .vcf before cleaning up.',
+    stats: '{0} contacts · {1} duplicate suggestions · {2} in trash',
+    empty_search: 'No contacts match the search.',
+    empty_none: 'No contacts yet. Add more .vcf files above.',
+    col_select_all: 'Select all',
+    col_name: 'Name',
+    col_phone: 'Phone',
+    col_email: 'Email',
+    col_org: 'Organization',
+    no_name: '(unnamed contact)',
+    sub_fields: 'vCard {0} · {1} fields',
+    edit: 'Edit',
+    move_to_trash: 'Move to trash',
+    bulk_info: '{0} selected',
+    dupes_none: '🎉 No suggested duplicates – your list looks clean!',
+    safe_found: '{0} groups with high confidence found.',
+    merge_safe: 'Merge all safe groups ({0})',
+    group_count: '{0} contacts',
+    confidence_badge: 'Confidence: {0}',
+    conf_high: 'High',
+    conf_medium: 'Medium',
+    conf_low: 'Low',
+    chip_hint: 'Choose primary with the radio button',
+    card_phone: 'Phone',
+    card_email: 'Email',
+    card_org: 'Organization',
+    card_note: 'Note',
+    card_other: 'Other',
+    keep_primary: 'Keep as primary',
+    merge_selected: 'Merge selected ({0})',
+    dismiss_group: 'Dismiss – not duplicates',
+    trash_empty: 'Trash is empty.',
+    trash_info: '{0} contacts in trash – they are not exported.',
+    empty_trash: 'Empty trash permanently',
+    restore: 'Restore',
+    purge: 'Delete permanently',
+    edit_title: 'Edit contact',
+    fld_name: 'Name',
+    fld_org: 'Organization (semicolon between fields, e.g. Company;Department)',
+    fld_title: 'Title',
+    fld_tels: 'Phone numbers (one per line)',
+    fld_emails: 'Email addresses (one per line)',
+    fld_note: 'Note',
+    cancel: 'Cancel',
+    save: 'Save',
+    toast_updated: 'Contact updated.',
+    toast_trashed: 'Contact moved to trash.',
+    toast_restored: 'Contact restored.',
+    toast_need_two: 'Select at least two contacts to merge.',
+    toast_merged: 'Merged {0} contacts into one. The merged cards are in the trash if you change your mind.',
+    toast_no_safe: 'No high-confidence groups.',
+    toast_safe_merged: 'Merged {0} high-confidence duplicate groups. The originals are in the trash.',
+    toast_read_error: 'Could not read {0}',
+    toast_no_contacts: 'No contacts found in the files.',
+    toast_loaded: '{0} contacts loaded ({1} total).',
+    toast_dismissed: 'Group dismissed.',
+    toast_bulk_trashed: 'Selected contacts moved to trash.',
+    toast_trash_emptied: 'Trash emptied.',
+    toast_nothing_export: 'No contacts to export.',
+    toast_vcf_dl: 'VCF downloaded – {0} contacts.',
+    toast_csv_dl: 'CSV downloaded – {0} contacts.',
+    filename_vcf: 'contacts-cleaned.vcf',
+    filename_csv: 'contacts.csv',
+    csv_name: 'Name', csv_given: 'First name', csv_family: 'Last name', csv_phone: 'Phone', csv_email: 'Email', csv_org: 'Organization', csv_note: 'Note',
+    reason_email: 'same email',
+    reason_phone: 'same phone number',
+    reason_name_exact: 'exact same name',
+    reason_name_similar: 'similar name',
+    reason_name_last: 'same last name + first initial',
+    reason_org: 'same organization'
+  }
+};
+
+let LANG = 'sv';
+function detectLang() {
+  try {
+    if (typeof location !== 'undefined') {
+      const q = new URLSearchParams(location.search).get('lang');
+      if (q === 'sv' || q === 'en') return q;
+      const m = location.pathname.match(/\/(sv|en)(?:[\/?#]|$)/i);
+      if (m) return m[1].toLowerCase();
+    }
+  } catch (e) {}
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const s = localStorage.getItem('vcf-rensare-lang');
+      if (s === 'sv' || s === 'en') return s;
+    }
+  } catch (e) {}
+  try {
+    if (typeof navigator !== 'undefined' && navigator.language) {
+      return navigator.language.toLowerCase().indexOf('sv') === 0 ? 'sv' : 'en';
+    }
+  } catch (e) {}
+  return 'sv';
+}
+LANG = detectLang();
+
+function t(key) {
+  const dict = I18N[LANG] || I18N.sv;
+  let s = Object.prototype.hasOwnProperty.call(dict, key) ? dict[key]
+    : (Object.prototype.hasOwnProperty.call(I18N.sv, key) ? I18N.sv[key] : key);
+  for (let i = 1; i < arguments.length; i++) {
+    s = s.split('{' + (i - 1) + '}').join(String(arguments[i]));
+  }
+  return s;
+}
 
 function splitUnescaped(v, sep) {
   const out = [];
@@ -330,21 +546,21 @@ function pairScore(a, b) {
   const reasons = [];
   const emailHit = [...a.emails].some(e => b.emails.has(e));
   const phoneHit = [...a.phones].some(p => b.phones.has(p));
-  if (emailHit) { score += 3; reasons.push('samma e-post'); }
-  if (phoneHit) { score += 3; reasons.push('samma telefonnummer'); }
-  if (a.name && a.name === b.name) { score += 2; reasons.push('exakt samma namn'); }
+  if (emailHit) { score += 3; reasons.push(t('reason_email')); }
+  if (phoneHit) { score += 3; reasons.push(t('reason_phone')); }
+  if (a.name && a.name === b.name) { score += 2; reasons.push(t('reason_name_exact')); }
   else if (a.name && b.name) {
-    if (nameSimilarity(a.name, b.name) >= 0.87) { score += 1.6; reasons.push('liknande namn'); }
+    if (nameSimilarity(a.name, b.name) >= 0.87) { score += 1.6; reasons.push(t('reason_name_similar')); }
     else {
       const ta = a.name.split(' ').filter(Boolean);
       const tb = b.name.split(' ').filter(Boolean);
       if (ta.length && tb.length && ta[ta.length - 1] === tb[tb.length - 1] && ta[0].charAt(0) === tb[0].charAt(0)) {
         score += 1.6;
-        reasons.push('samma efternamn + förnamnsinitial');
+        reasons.push(t('reason_name_last'));
       }
     }
   }
-  if (a.org && a.org === b.org && a.org.length > 2) { score += 0.5; reasons.push('samma organisation'); }
+  if (a.org && a.org === b.org && a.org.length > 2) { score += 0.5; reasons.push(t('reason_org')); }
   return { score, reasons };
 }
 
@@ -381,7 +597,7 @@ function findDuplicateGroups(contacts) {
         r.reasons.forEach(x => reasonSet.add(x));
       }
     }
-    const confidence = best >= 5 ? 'Hög' : (best >= 3.5 ? 'Medel' : 'Låg');
+    const confidence = best >= 5 ? 'high' : (best >= 3.5 ? 'medium' : 'low');
     groups.push({
       id: 'g' + (++groupSeq),
       contacts: idxs.map(i => items[i]),
@@ -389,7 +605,7 @@ function findDuplicateGroups(contacts) {
       reasons: [...reasonSet]
     });
   }
-  groups.sort((a, b) => (b.contacts.length - a.contacts.length) || (b.confidence === 'Hög' ? 1 : -1));
+  groups.sort((a, b) => (b.contacts.length - a.contacts.length) || (b.confidence === 'high' ? 1 : -1));
   return groups;
 }
 
@@ -520,7 +736,7 @@ function csvCell(v) {
 }
 
 function serializeCSV(contacts) {
-  const rows = [['Namn', 'Förnamn', 'Efternamn', 'Telefon', 'E-post', 'Organisation', 'Anteckning']];
+  const rows = [[t('csv_name'), t('csv_given'), t('csv_family'), t('csv_phone'), t('csv_email'), t('csv_org'), t('csv_note')]];
   for (const c of contacts) {
     if (c.trashed) continue;
     const n = getValues(c, 'N');
@@ -542,7 +758,9 @@ const api = {
   parseVCF, serializeVCF, serializeCSV, findDuplicateGroups, mergeContacts,
   contactName, contactEmails, contactPhones, contactOrg, contactNote, contactVersion,
   normPhone, phoneKey, normName, normEmail, stripDiacritics, unescapeText, escapeText,
-  getValues, getProps, pairScore, contactKey
+  getValues, getProps, pairScore, contactKey, t, I18N,
+  setLang: function (l) { LANG = (l === 'en' || l === 'sv') ? l : 'sv'; },
+  getLang: function () { return LANG; }
 };
 if (typeof globalThis !== 'undefined') globalThis.VCFCleaner = api;
 
@@ -619,11 +837,10 @@ function matchesSearch(c, q) {
 
 function renderStats() {
   const n = activeContacts().length;
-  const t = trashContacts().length;
-  document.getElementById('stats').textContent =
-    n + ' kontakter · ' + state.groups.length + ' dubblettförslag · ' + t + ' i papperskorgen';
+  const tr = trashContacts().length;
+  document.getElementById('stats').textContent = t('stats', n, state.groups.length, tr);
   document.getElementById('badge-dupes').textContent = state.groups.length;
-  document.getElementById('badge-trash').textContent = t;
+  document.getElementById('badge-trash').textContent = tr;
 }
 
 function renderTabs() {
@@ -640,30 +857,30 @@ function renderContacts() {
     .sort((a, b) => contactName(a).localeCompare(contactName(b), 'sv'));
   if (!list.length) {
     view.innerHTML = '<div class="panel"><div class="empty">' +
-      (q ? 'Inga kontakter matchar sökningen.' : 'Inga kontakter än. Lägg till fler .vcf-filer ovan.') +
+      (q ? t('empty_search') : t('empty_none')) +
       '</div></div>';
     document.getElementById('bulk-bar').style.display = 'none';
     return;
   }
   let html = '<div class="panel"><table><thead><tr>' +
-    '<th style="width:34px"><input type="checkbox" id="sel-all" aria-label="Markera alla"></th>' +
-    '<th>Namn</th><th>Telefon</th><th>E-post</th><th>Organisation</th><th></th>' +
+    '<th style="width:34px"><input type="checkbox" id="sel-all" aria-label="' + esc(t('col_select_all')) + '"></th>' +
+    '<th>' + esc(t('col_name')) + '</th><th>' + esc(t('col_phone')) + '</th><th>' + esc(t('col_email')) + '</th><th>' + esc(t('col_org')) + '</th><th></th>' +
     '</tr></thead><tbody>';
   for (const c of list) {
-    const name = contactName(c) || '(namnlös kontakt)';
+    const name = contactName(c) || t('no_name');
     const phones = contactPhones(c);
     const emails = contactEmails(c);
     html += '<tr data-cid="' + esc(c.id) + '">' +
       '<td><input type="checkbox" class="sel-check" data-cid="' + esc(c.id) + '"' + (state.selected.has(c.id) ? ' checked' : '') + '></td>' +
       '<td><strong>' + esc(name) + '</strong>' +
       (contactNote(c) ? '<div class="sub">' + esc(contactNote(c).slice(0, 90)) + (contactNote(c).length > 90 ? '…' : '') + '</div>' : '') +
-      '<div class="sub">vCard ' + esc(contactVersion(c)) + ' · ' + c.props.length + ' fält</div></td>' +
+      '<div class="sub">' + esc(t('sub_fields', contactVersion(c), c.props.length)) + '</div></td>' +
       '<td>' + (phones.map(esc).join('<br>') || '<span class="sub">–</span>') + '</td>' +
       '<td>' + (emails.map(esc).join('<br>') || '<span class="sub">–</span>') + '</td>' +
       '<td>' + (contactOrg(c) ? esc(contactOrg(c)) : '<span class="sub">–</span>') + '</td>' +
       '<td class="row-actions">' +
-      '<button class="small" data-action="edit" data-cid="' + esc(c.id) + '">Redigera</button> ' +
-      '<button class="small danger" data-action="trash" data-cid="' + esc(c.id) + '" title="Flytta till papperskorgen">🗑</button>' +
+      '<button class="small" data-action="edit" data-cid="' + esc(c.id) + '">' + esc(t('edit')) + '</button> ' +
+      '<button class="small danger" data-action="trash" data-cid="' + esc(c.id) + '" title="' + esc(t('move_to_trash')) + '">🗑</button>' +
       '</td></tr>';
   }
   html += '</tbody></table></div>';
@@ -675,48 +892,48 @@ function updateBulkBar() {
   const bar = document.getElementById('bulk-bar');
   const n = state.selected.size;
   bar.style.display = n ? 'flex' : 'none';
-  document.getElementById('bulk-info').textContent = n + ' markerade';
+  document.getElementById('bulk-info').textContent = t('bulk_info', n);
 }
 
 function renderDupes() {
   const view = document.getElementById('view');
   document.getElementById('bulk-bar').style.display = 'none';
   if (!state.groups.length) {
-    view.innerHTML = '<div class="panel"><div class="empty">🎉 Inga föreslagna dubbletter – din lista ser ren ut!</div></div>';
+    view.innerHTML = '<div class="panel"><div class="empty">' + esc(t('dupes_none')) + '</div></div>';
     return;
   }
-  const safeCount = state.groups.filter(g => g.confidence === 'Hög').length;
+  const safeCount = state.groups.filter(g => g.confidence === 'high').length;
   let html = '';
   if (safeCount) {
-    html += '<div class="toolbar" style="margin-top:0"><span class="stats">' + safeCount +
-      ' grupper med hög säkerhet hittades.</span>' +
-      '<button class="primary" data-action="merge-safe">Slå ihop alla säkra grupper (' + safeCount + ')</button></div>';
+    html += '<div class="toolbar" style="margin-top:0"><span class="stats">' + esc(t('safe_found', safeCount)) + '</span>' +
+      '<button class="primary" data-action="merge-safe">' + esc(t('merge_safe', safeCount)) + '</button></div>';
   }
   for (const g of state.groups) {
-    const confClass = g.confidence === 'Hög' ? 'high' : (g.confidence === 'Medel' ? 'med' : 'low');
+    const confClass = g.confidence;
+    const confLabel = t('conf_' + confClass);
     html += '<div class="group-card" data-gid="' + esc(g.id) + '">' +
-      '<div class="group-head"><span class="title">' + g.contacts.length + ' kontakter</span>' +
-      '<span class="badge ' + confClass + '">Säkerhet: ' + esc(g.confidence) + '</span>' +
+      '<div class="group-head"><span class="title">' + esc(t('group_count', g.contacts.length)) + '</span>' +
+      '<span class="badge ' + confClass + '">' + esc(t('confidence_badge', confLabel)) + '</span>' +
       g.reasons.map(r => '<span class="chip">' + esc(r) + '</span>').join('') +
-      '<span class="chip">Välj primär med radioknappen</span>' +
+      '<span class="chip">' + esc(t('chip_hint')) + '</span>' +
       '</div><div class="dupe-grid">';
     g.contacts.forEach((c, i) => {
-      const name = contactName(c) || '(namnlös kontakt)';
+      const name = contactName(c) || t('no_name');
       html += '<div class="dupe-card">' +
         '<div class="top"><input type="checkbox" class="dupe-check" data-gid="' + esc(g.id) + '" data-cid="' + esc(c.id) + '" checked>' +
-        '<input type="radio" name="primary-' + esc(g.id) + '" value="' + esc(c.id) + '"' + (i === 0 ? ' checked' : '') + ' title="Behåll som primär">' +
+        '<input type="radio" name="primary-' + esc(g.id) + '" value="' + esc(c.id) + '"' + (i === 0 ? ' checked' : '') + ' title="' + esc(t('keep_primary')) + '">' +
         '<span class="nm">' + esc(name) + '</span></div>' +
         '<dl>' +
-        (contactPhones(c).length ? '<dt>Telefon</dt><dd>' + contactPhones(c).map(esc).join('<br>') + '</dd>' : '') +
-        (contactEmails(c).length ? '<dt>E-post</dt><dd>' + contactEmails(c).map(esc).join('<br>') + '</dd>' : '') +
-        (contactOrg(c) ? '<dt>Organisation</dt><dd>' + esc(contactOrg(c)) + '</dd>' : '') +
-        (contactNote(c) ? '<dt>Anteckning</dt><dd>' + esc(contactNote(c).slice(0, 140)) + '</dd>' : '') +
-        '<dt>Övrigt</dt><dd>vCard ' + esc(contactVersion(c)) + ' · ' + c.props.length + ' fält</dd>' +
+        (contactPhones(c).length ? '<dt>' + esc(t('card_phone')) + '</dt><dd>' + contactPhones(c).map(esc).join('<br>') + '</dd>' : '') +
+        (contactEmails(c).length ? '<dt>' + esc(t('card_email')) + '</dt><dd>' + contactEmails(c).map(esc).join('<br>') + '</dd>' : '') +
+        (contactOrg(c) ? '<dt>' + esc(t('card_org')) + '</dt><dd>' + esc(contactOrg(c)) + '</dd>' : '') +
+        (contactNote(c) ? '<dt>' + esc(t('card_note')) + '</dt><dd>' + esc(contactNote(c).slice(0, 140)) + '</dd>' : '') +
+        '<dt>' + esc(t('card_other')) + '</dt><dd>' + esc(t('sub_fields', contactVersion(c), c.props.length)) + '</dd>' +
         '</dl></div>';
     });
     html += '</div><div class="group-foot">' +
-      '<button class="primary" data-action="merge-group" data-gid="' + esc(g.id) + '">Slå ihop markerade (' + g.contacts.length + ')</button>' +
-      '<button data-action="dismiss-group" data-gid="' + esc(g.id) + '">Avfärda – inte dubbletter</button>' +
+      '<button class="primary" data-action="merge-group" data-gid="' + esc(g.id) + '">' + esc(t('merge_selected', g.contacts.length)) + '</button>' +
+      '<button data-action="dismiss-group" data-gid="' + esc(g.id) + '">' + esc(t('dismiss_group')) + '</button>' +
       '</div></div>';
   }
   view.innerHTML = html;
@@ -727,19 +944,18 @@ function renderTrash() {
   document.getElementById('bulk-bar').style.display = 'none';
   const list = trashContacts();
   if (!list.length) {
-    view.innerHTML = '<div class="panel"><div class="empty">Papperskorgen är tom.</div></div>';
+    view.innerHTML = '<div class="panel"><div class="empty">' + esc(t('trash_empty')) + '</div></div>';
     return;
   }
-  let html = '<div class="toolbar" style="margin-top:0"><span class="stats">' + list.length +
-    ' kontakter i papperskorgen – de exporteras inte.</span>' +
-    '<button class="danger" data-action="empty-trash">Töm papperskorgen permanent</button></div>' +
+  let html = '<div class="toolbar" style="margin-top:0"><span class="stats">' + esc(t('trash_info', list.length)) + '</span>' +
+    '<button class="danger" data-action="empty-trash">' + esc(t('empty_trash')) + '</button></div>' +
     '<div class="panel">';
   for (const c of list) {
     html += '<div class="trash-row">' +
-      '<div class="info"><div class="nm">' + esc(contactName(c) || '(namnlös kontakt)') + '</div>' +
+      '<div class="info"><div class="nm">' + esc(contactName(c) || t('no_name')) + '</div>' +
       '<div class="sub">' + esc(contactSummary(c)) + '</div></div>' +
-      '<button class="small" data-action="restore" data-cid="' + esc(c.id) + '">Återställ</button>' +
-      '<button class="small danger" data-action="purge" data-cid="' + esc(c.id) + '">Radera permanent</button>' +
+      '<button class="small" data-action="restore" data-cid="' + esc(c.id) + '">' + esc(t('restore')) + '</button>' +
+      '<button class="small danger" data-action="purge" data-cid="' + esc(c.id) + '">' + esc(t('purge')) + '</button>' +
       '</div>';
   }
   html += '</div>';
@@ -759,15 +975,15 @@ function openEdit(cid) {
   if (!c) return;
   const modal = document.getElementById('modal');
   modal.innerHTML =
-    '<div class="modal-box"><h2>Redigera kontakt</h2><form id="edit-form" data-cid="' + esc(cid) + '">' +
-    '<label for="ef-fn">Namn</label><input type="text" id="ef-fn" name="fn" value="' + esc(contactName(c)) + '">' +
-    '<label for="ef-org">Organisation (semikolon mellan fälten, t.ex. Företag;Avdelning)</label><input type="text" id="ef-org" name="org" value="' + esc(getValues(c, 'ORG')[0] || '') + '">' +
-    '<label for="ef-title">Titel</label><input type="text" id="ef-title" name="title" value="' + esc(getValues(c, 'TITLE')[0] || '') + '">' +
-    '<label for="ef-tels">Telefonnummer (ett per rad)</label><textarea id="ef-tels" name="tels" rows="3">' + esc(contactPhones(c).join('\n')) + '</textarea>' +
-    '<label for="ef-emails">E-postadresser (en per rad)</label><textarea id="ef-emails" name="emails" rows="3">' + esc(getValues(c, 'EMAIL').join('\n')) + '</textarea>' +
-    '<label for="ef-note">Anteckning</label><textarea id="ef-note" name="note" rows="3">' + esc(contactNote(c)) + '</textarea>' +
-    '<div class="modal-actions"><button type="button" data-action="close-modal">Avbryt</button>' +
-    '<button type="submit" class="primary">Spara</button></div></form></div>';
+    '<div class="modal-box"><h2>' + esc(t('edit_title')) + '</h2><form id="edit-form" data-cid="' + esc(cid) + '">' +
+    '<label for="ef-fn">' + esc(t('fld_name')) + '</label><input type="text" id="ef-fn" name="fn" value="' + esc(contactName(c)) + '">' +
+    '<label for="ef-org">' + esc(t('fld_org')) + '</label><input type="text" id="ef-org" name="org" value="' + esc(getValues(c, 'ORG')[0] || '') + '">' +
+    '<label for="ef-title">' + esc(t('fld_title')) + '</label><input type="text" id="ef-title" name="title" value="' + esc(getValues(c, 'TITLE')[0] || '') + '">' +
+    '<label for="ef-tels">' + esc(t('fld_tels')) + '</label><textarea id="ef-tels" name="tels" rows="3">' + esc(contactPhones(c).join('\n')) + '</textarea>' +
+    '<label for="ef-emails">' + esc(t('fld_emails')) + '</label><textarea id="ef-emails" name="emails" rows="3">' + esc(getValues(c, 'EMAIL').join('\n')) + '</textarea>' +
+    '<label for="ef-note">' + esc(t('fld_note')) + '</label><textarea id="ef-note" name="note" rows="3">' + esc(contactNote(c)) + '</textarea>' +
+    '<div class="modal-actions"><button type="button" data-action="close-modal">' + esc(t('cancel')) + '</button>' +
+    '<button type="submit" class="primary">' + esc(t('save')) + '</button></div></form></div>';
   modal.classList.add('open');
   document.getElementById('ef-fn').focus();
 }
@@ -797,7 +1013,7 @@ function saveEdit(cid, form) {
   c.props = props;
   closeModal();
   recompute();
-  toast('Kontakt uppdaterad.');
+  toast(t('toast_updated'));
 }
 
 function closeModal() {
@@ -811,7 +1027,7 @@ function trashContact(cid) {
   c.trashed = true;
   state.selected.delete(cid);
   recompute();
-  toast('Kontakt flyttad till papperskorgen.');
+  toast(t('toast_trashed'));
 }
 
 function restoreContact(cid) {
@@ -819,7 +1035,7 @@ function restoreContact(cid) {
   if (!c) return;
   c.trashed = false;
   recompute();
-  toast('Kontakt återställd.');
+  toast(t('toast_restored'));
 }
 
 function purgeContact(cid) {
@@ -833,7 +1049,7 @@ function mergeGroupById(gid) {
   if (!g) return;
   const checkedBoxes = Array.from(document.querySelectorAll('.dupe-check[data-gid="' + gid + '"]:checked'));
   const checked = checkedBoxes.map(cb => cb.dataset.cid);
-  if (checked.length < 2) { toast('Markera minst två kontakter att slå ihop.', true); return; }
+  if (checked.length < 2) { toast(t('toast_need_two'), true); return; }
   const radio = document.querySelector('input[name="primary-' + gid + '"]:checked');
   let primaryId = radio ? radio.value : checked[0];
   if (checked.indexOf(primaryId) === -1) primaryId = checked[0];
@@ -850,12 +1066,12 @@ function mergeGroupById(gid) {
   others.forEach(c => state.selected.delete(c.id));
   state.dismissed.add(groupKey(g));
   recompute();
-  toast('Slog ihop ' + ordered.length + ' kontakter till en. Sammanslagna kort ligger i papperskorgen om du ångrar dig.');
+  toast(t('toast_merged', ordered.length));
 }
 
 function mergeAllSafe() {
-  const safe = state.groups.filter(g => g.confidence === 'Hög');
-  if (!safe.length) { toast('Inga grupper med hög säkerhet.', true); return; }
+  const safe = state.groups.filter(g => g.confidence === 'high');
+  if (!safe.length) { toast(t('toast_no_safe'), true); return; }
   const byId = {};
   state.contacts.forEach(c => { byId[c.id] = c; });
   const toTrash = [];
@@ -867,7 +1083,7 @@ function mergeAllSafe() {
     state.dismissed.add(groupKey(g));
   }
   recompute();
-  toast('Slog ihop ' + safe.length + ' säkra dubblettgrupper. Originalen ligger i papperskorgen.');
+  toast(t('toast_safe_merged', safe.length));
 }
 
 async function loadFiles(files) {
@@ -878,20 +1094,51 @@ async function loadFiles(files) {
       const text = await f.text();
       all = all.concat(parseVCF(text));
     } catch (e) {
-      toast('Kunde inte läsa ' + f.name, true);
+      toast(t('toast_read_error', f.name), true);
     }
   }
-  if (!all.length) { toast('Inga kontakter hittades i filerna.', true); return; }
+  if (!all.length) { toast(t('toast_no_contacts'), true); return; }
   state.contacts = state.contacts.concat(all);
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('dropzone').classList.add('compact');
-  document.querySelector('#dropzone .big').textContent = 'Lägg till fler .vcf-filer – klicka eller dra hit';
-  document.querySelector('#dropzone .hint').textContent = 'Nya kontakter läggs till befintliga och dubblettförslagen uppdateras.';
+  document.querySelector('#dropzone .big').textContent = t('drop_big_added');
+  document.querySelector('#dropzone .hint').textContent = t('drop_hint_added');
   recompute();
-  toast(all.length + ' kontakter inlästa (' + activeContacts().length + ' totalt).');
+  toast(t('toast_loaded', all.length, activeContacts().length));
+}
+
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.title = t('doc_title');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  });
+  document.querySelectorAll('#lang-switch a').forEach(a => {
+    a.classList.toggle('active', a.dataset.lang === LANG);
+  });
+  if (document.getElementById('app') && !document.getElementById('app').classList.contains('hidden')) render();
 }
 
 function initUI() {
+  applyLang();
+  document.querySelectorAll('#lang-switch a').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      LANG = a.dataset.lang;
+      try { localStorage.setItem('vcf-rensare-lang', LANG); } catch (err) {}
+      const url = new URL(location.href);
+      url.searchParams.set('lang', LANG);
+      history.replaceState(null, '', url);
+      applyLang();
+    });
+  });
+
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('file-input');
 
@@ -925,7 +1172,7 @@ function initUI() {
     else if (action === 'merge-safe') mergeAllSafe();
     else if (action === 'dismiss-group') {
       const g = state.groups.find(x => x.id === gid);
-      if (g) { state.dismissed.add(groupKey(g)); recompute(); toast('Grupp avfärdad.'); }
+      if (g) { state.dismissed.add(groupKey(g)); recompute(); toast(t('toast_dismissed')); }
     }
     else if (action === 'delete-selected') {
       state.selected.forEach(id => {
@@ -934,25 +1181,25 @@ function initUI() {
       });
       state.selected.clear();
       recompute();
-      toast('Markerade kontakter flyttade till papperskorgen.');
+      toast(t('toast_bulk_trashed'));
     }
     else if (action === 'clear-selection') { state.selected.clear(); renderContacts(); }
     else if (action === 'empty-trash') {
       state.contacts = state.contacts.filter(c => !c.trashed);
       recompute();
-      toast('Papperskorgen tömd.');
+      toast(t('toast_trash_emptied'));
     }
     else if (action === 'export-vcf') {
       const n = activeContacts().length;
-      if (!n) { toast('Inga kontakter att exportera.', true); return; }
-      download('kontakter-rensade.vcf', serializeVCF(state.contacts), 'text/vcard;charset=utf-8');
-      toast('VCF nedladdad – ' + n + ' kontakter.');
+      if (!n) { toast(t('toast_nothing_export'), true); return; }
+      download(t('filename_vcf'), serializeVCF(state.contacts), 'text/vcard;charset=utf-8');
+      toast(t('toast_vcf_dl', n));
     }
     else if (action === 'export-csv') {
       const n = activeContacts().length;
-      if (!n) { toast('Inga kontakter att exportera.', true); return; }
-      download('kontakter.csv', serializeCSV(state.contacts), 'text/csv;charset=utf-8');
-      toast('CSV nedladdad – ' + n + ' kontakter.');
+      if (!n) { toast(t('toast_nothing_export'), true); return; }
+      download(t('filename_csv'), serializeCSV(state.contacts), 'text/csv;charset=utf-8');
+      toast(t('toast_csv_dl', n));
     }
     else if (action === 'close-modal') closeModal();
   });
