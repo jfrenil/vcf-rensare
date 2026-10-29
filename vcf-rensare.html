@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="doc-title">VCF-rensare – städa och slå ihop kontakter (lokalt)</title>
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --ink: #1c1e21; --muted: #65676b;
+  --accent: #1b74e4; --accent-dark: #1557b0; --danger: #d93025; --danger-dark: #a50e0e;
+  --ok: #188038; --warn: #e37400; --line: #dadde1; --chip: #e4e6eb;
+  --group: #eef3fc; --shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #18191a; --panel: #242526; --ink: #e4e6eb; --muted: #b0b3b8;
+    --accent: #4e9bff; --accent-dark: #2d7ef0; --danger: #ff6b60; --danger-dark: #ff867c;
+    --ok: #4bc27a; --warn: #f5a623; --line: #3e4042; --chip: #3a3b3c;
+    --group: #1f2c42; --shadow: 0 1px 3px rgba(0,0,0,.5);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.45; }
+header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 14px 20px; box-shadow: var(--shadow); }
+header h1 { margin: 0; font-size: 1.25rem; }
+header p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; }
+main { max-width: 1150px; margin: 0 auto; padding: 18px 16px 60px; }
+#dropzone { border: 2px dashed var(--line); border-radius: 12px; background: var(--panel); padding: 34px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+#dropzone:hover, #dropzone.over { border-color: var(--accent); background: var(--group); }
+#dropzone.compact { padding: 10px 16px; font-size: .85rem; color: var(--muted); }
+#dropzone .big { font-size: 1.05rem; font-weight: 600; }
+#dropzone .hint { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0 6px; }
+.toolbar .stats { color: var(--muted); font-size: .85rem; margin-right: auto; }
+button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
+button:hover { background: var(--chip); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-dark); }
+button.danger { color: var(--danger); border-color: var(--danger); }
+button.danger:hover { background: var(--danger); color: #fff; }
+button.small { padding: 3px 9px; font-size: .8rem; }
+button:disabled { opacity: .5; cursor: default; }
+input[type="text"], input[type="search"], textarea { font: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: var(--panel); color: var(--ink); width: 100%; }
+nav.tabs { display: flex; gap: 4px; margin: 12px 0 14px; border-bottom: 1px solid var(--line); }
+nav.tabs button { border: none; background: none; border-radius: 8px 8px 0 0; padding: 9px 16px; color: var(--muted); font-weight: 600; }
+nav.tabs button.active { color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); background: var(--panel); }
+.badge { display: inline-block; background: var(--chip); border-radius: 999px; padding: 1px 9px; font-size: .75rem; font-weight: 700; margin-left: 6px; }
+.badge.high { background: #fce8e6; color: var(--danger-dark); }
+.badge.medium { background: #fef3e0; color: var(--warn); }
+.badge.low { background: var(--chip); color: var(--muted); }
+@media (prefers-color-scheme: dark) { .badge.high { background: #4a2320; } .badge.medium { background: #4a3a1a; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--chip); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+tr:hover td { background: var(--group); }
+td .sub { color: var(--muted); font-size: .8rem; }
+.row-actions { white-space: nowrap; text-align: right; }
+.empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+.group-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; }
+.group-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; background: var(--group); border-bottom: 1px solid var(--line); }
+.group-head .title { font-weight: 700; margin-right: auto; }
+.chip { display: inline-block; background: var(--chip); border-radius: 999px; padding: 2px 10px; font-size: .75rem; color: var(--muted); }
+.dupe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; padding: 14px 16px; }
+.dupe-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); }
+.dupe-card .top { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.dupe-card .top .nm { font-weight: 700; }
+.dupe-card dl { margin: 0; font-size: .82rem; }
+.dupe-card dt { color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; }
+.dupe-card dd { margin: 0 0 5px; word-break: break-word; }
+.group-foot { display: flex; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.trash-row { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.trash-row .info { flex: 1; min-width: 0; }
+.trash-row .nm { font-weight: 600; }
+.trash-row .sub { color: var(--muted); font-size: .8rem; }
+#modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50; padding: 20px; overflow: auto; }
+#modal.open { display: flex; align-items: flex-start; justify-content: center; }
+.modal-box { background: var(--panel); border-radius: 12px; padding: 20px; max-width: 520px; width: 100%; margin-top: 6vh; box-shadow: var(--shadow); }
+.modal-box h2 { margin-top: 0; }
+.modal-box label { display: block; font-size: .8rem; color: var(--muted); margin: 10px 0 3px; font-weight: 600; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+#toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(80px); background: #323639; color: #fff; padding: 10px 20px; border-radius: 999px; font-size: .88rem; opacity: 0; transition: transform .25s, opacity .25s; z-index: 60; pointer-events: none; max-width: 90vw; }
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+#toast.err { background: var(--danger-dark); }
+footer { text-align: center; color: var(--muted); font-size: .78rem; padding: 18px; }
+.hidden { display: none !important; }
+#lang-switch { float: right; font-size: .8rem; }
+#lang-switch a { color: var(--accent); text-decoration: none; font-weight: 600; }
+#lang-switch a.active { color: var(--muted); pointer-events: none; }
+</style>
+</head>
+<body>
+<header>
+  <span id="lang-switch"><a href="?lang=sv" data-lang="sv">Svenska</a> · <a href="?lang=en" data-lang="en">English</a></span>
+  <h1>VCF-rensare</h1>
+  <p data-i18n="header_sub">Städa, redigera och slå ihop kontakter från .vcf-filer – 100 % lokalt i din webbläsare, ingen data lämnar datorn.</p>
+</header>
+<main>
+  <div id="dropzone" tabindex="0" role="button" data-i18n-aria="aria_dropzone" aria-label="Ladda upp VCF-filer">
+    <div class="big" data-i18n="drop_big">Dra hit dina .vcf-filer här, eller klicka för att välja</div>
+    <div class="hint" data-i18n="drop_hint">Flera filer går bra – kontakterna slås ihop till en lista innan du städar. Stöder vCard 2.1, 3.0 och 4.0.</div>
+  </div>
+  <input type="file" id="file-input" accept=".vcf,.vcard,text/vcard,text/x-vcard" multiple class="hidden">
+
+  <div id="app" class="hidden">
+    <div class="toolbar">
+      <span class="stats" id="stats"></span>
+      <input type="search" id="search" data-i18n-placeholder="search_placeholder" placeholder="Sök namn, telefon, e-post…" style="max-width:260px">
+      <button data-action="export-vcf" class="primary" data-i18n="export_vcf">Ladda ner renad VCF</button>
+      <button data-action="export-csv" data-i18n="export_csv">Exportera CSV</button>
+    </div>
+    <nav class="tabs">
+      <button data-view="contacts" id="tab-contacts" data-i18n="tab_contacts">Kontakter</button>
+      <button data-view="dupes" id="tab-dupes"><span data-i18n="tab_dupes">Föreslagna dubbletter</span><span class="badge" id="badge-dupes">0</span></button>
+      <button data-view="trash" id="tab-trash"><span data-i18n="tab_trash">Papperskorg</span><span class="badge" id="badge-trash">0</span></button>
+    </nav>
+    <div class="toolbar" id="bulk-bar" style="display:none">
+      <span class="stats" id="bulk-info"></span>
+      <button data-action="delete-selected" class="danger" data-i18n="bulk_delete">Radera markerade</button>
+      <button data-action="clear-selection" data-i18n="bulk_clear">Avmarkera alla</button>
+    </div>
+    <div id="view"></div>
+  </div>
+</main>
+<div id="modal" role="dialog" aria-modal="true"></div>
+<div id="toast" role="status"></div>
+<footer data-i18n="footer">All bearbetning sker lokalt i webbläsaren. Spara alltid en säkerhetskopia av din ursprungliga .vcf innan du städar.</footer>
+<script>
+(function () {
+'use strict';
+
+const I18N = {
+  sv: {
+    doc_title: 'VCF-rensare – städa och slå ihop kontakter (lokalt)',
+    header_sub: 'Städa, redigera och slå ihop kontakter från .vcf-filer – 100 % lokalt i din webbläsare, ingen data lämnar datorn.',
+    aria_dropzone: 'Ladda upp VCF-filer',
+    drop_big: 'Dra hit dina .vcf-filer här, eller klicka för att välja',
+    drop_hint: 'Flera filer går bra – kontakterna slås ihop till en lista innan du städar. Stöder vCard 2.1, 3.0 och 4.0.',
+    drop_big_added: 'Lägg till fler .vcf-filer – klicka eller dra hit',
+    drop_hint_added: 'Nya kontakter läggs till befintliga och dubblettförslagen uppdateras.',
+    search_placeholder: 'Sök namn, telefon, e-post…',
+    export_vcf: 'Ladda ner renad VCF',
+    export_csv: 'Exportera CSV',
+    tab_contacts: 'Kontakter',
+    tab_dupes: 'Föreslagna dubbletter',
+    tab_trash: 'Papperskorg',
+    bulk_delete: 'Radera markerade',
+    bulk_clear: 'Avmarkera alla',
+    footer: 'All bearbetning sker lokalt i webbläsaren. Spara alltid en säkerhetskopia av din ursprungliga .vcf innan du städar.',
+    stats: '{0} kontakter · {1} dubblettförslag · {2} i papperskorgen',
+    empty_search: 'Inga kontakter matchar sökningen.',
+    empty_none: 'Inga kontakter än. Lägg till fler .vcf-filer ovan.',
+    col_select_all: 'Markera alla',
+    col_name: 'Namn',
+    col_phone: 'Telefon',
+    col_email: 'E-post',
+    col_org: 'Organisation',
+    no_name: '(namnlös kontakt)',
+    sub_fields: 'vCard {0} · {1} fält',
+    edit: 'Redigera',
+    move_to_trash: 'Flytta till papperskorgen',
+    bulk_info: '{0} markerade',
+    dupes_none: '🎉 Inga föreslagna dubbletter – din lista ser ren ut!',
+    safe_found: '{0} grupper med hög säkerhet hittades.',
+    merge_safe: 'Slå ihop alla säkra grupper ({0})',
+    group_count: '{0} kontakter',
+    confidence_badge: 'Säkerhet: {0}',
+    conf_high: 'Hög',
+    conf_medium: 'Medel',
+    conf_low: 'Låg',
+    chip_hint: 'Välj primär med radioknappen',
+    card_phone: 'Telefon',
+    card_email: 'E-post',
+    card_org: 'Organisation',
+    card_note: 'Anteckning',
+    card_other: 'Övrigt',
+    keep_primary: 'Behåll som primär',
+    merge_selected: 'Slå ihop markerade ({0})',
+    dismiss_group: 'Avfärda – inte dubbletter',
+    trash_empty: 'Papperskorgen är tom.',
+    trash_info: '{0} kontakter i papperskorgen – de exporteras inte.',
+    empty_trash: 'Töm papperskorgen permanent',
+    restore: 'Återställ',
+    purge: 'Radera permanent',
+    edit_title: 'Redigera kontakt',
+    fld_name: 'Namn',
+    fld_org: 'Organisation (semikolon mellan fälten, t.ex. Företag;Avdelning)',
+    fld_title: 'Titel',
+    fld_tels: 'Telefonnummer (ett per rad)',
+    fld_emails: 'E-postadresser (en per rad)',
+    fld_note: 'Anteckning',
+    cancel: 'Avbryt',
+    save: 'Spara',
+    toast_updated: 'Kontakt uppdaterad.',
+    toast_trashed: 'Kontakt flyttad till papperskorgen.',
+    toast_restored: 'Kontakt återställd.',
+    toast_need_two: 'Markera minst två kontakter att slå ihop.',
+    toast_merged: 'Slog ihop {0} kontakter till en. Sammanslagna kort ligger i papperskorgen om du ångrar dig.',
+    toast_no_safe: 'Inga grupper med hög säkerhet.',
+    toast_safe_merged: 'Slog ihop {0} säkra dubblettgrupper. Originalen ligger i papperskorgen.',
+    toast_read_error: 'Kunde inte läsa {0}',
+    toast_no_contacts: 'Inga kontakter hittades i filerna.',
+    toast_loaded: '{0} kontakter inlästa ({1} totalt).',
+    toast_dismissed: 'Grupp avfärdad.',
+    toast_bulk_trashed: 'Markerade kontakter flyttade till papperskorgen.',
+    toast_trash_emptied: 'Papperskorgen tömd.',
+    toast_nothing_export: 'Inga kontakter att exportera.',
+    toast_vcf_dl: 'VCF nedladdad – {0} kontakter.',
+    toast_csv_dl: 'CSV nedladdad – {0} kontakter.',
+    filename_vcf: 'kontakter-rensade.vcf',
+    filename_csv: 'kontakter.csv',
+    csv_name: 'Namn', csv_given: 'Förnamn', csv_family: 'Efternamn', csv_phone: 'Telefon', csv_email: 'E-post', csv_org: 'Organisation', csv_note: 'Anteckning',
+    reason_email: 'samma e-post',
+    reason_phone: 'samma telefonnummer',
+    reason_name_exact: 'exakt samma namn',
+    reason_name_similar: 'liknande namn',
+    reason_name_last: 'samma efternamn + förnamnsinitial',
+    reason_org: 'samma organisation'
+  },
+  en: {
+    doc_title: 'VCF Cleaner – tidy up and merge contacts (local)',
+    header_sub: 'Clean up, edit and merge contacts from .vcf files – 100 % local in your browser, no data leaves your computer.',
+    aria_dropzone: 'Upload VCF files',
+    drop_big: 'Drag your .vcf files here, or click to choose',
+    drop_hint: 'Multiple files work – contacts are combined into one list before you clean up. Supports vCard 2.1, 3.0 and 4.0.',
+    drop_big_added: 'Add more .vcf files – click or drag here',
+    drop_hint_added: 'New contacts are added to the existing ones and duplicate suggestions are updated.',
+    search_placeholder: 'Search name, phone, email…',
+    export_vcf: 'Download cleaned VCF',
+    export_csv: 'Export CSV',
+    tab_contacts: 'Contacts',
+    tab_dupes: 'Suggested duplicates',
+    tab_trash: 'Trash',
+    bulk_delete: 'Delete selected',
+    bulk_clear: 'Clear selection',
+    footer: 'All processing happens locally in the browser. Always keep a backup of your original .vcf before cleaning up.',
+    stats: '{0} contacts · {1} duplicate suggestions · {2} in trash',
+    empty_search: 'No contacts match the search.',
+    empty_none: 'No contacts yet. Add more .vcf files above.',
+    col_select_all: 'Select all',
+    col_name: 'Name',
+    col_phone: 'Phone',
+    col_email: 'Email',
+    col_org: 'Organization',
+    no_name: '(unnamed contact)',
+    sub_fields: 'vCard {0} · {1} fields',
+    edit: 'Edit',
+    move_to_trash: 'Move to trash',
+    bulk_info: '{0} selected',
+    dupes_none: '🎉 No suggested duplicates – your list looks clean!',
+    safe_found: '{0} groups with high confidence found.',
+    merge_safe: 'Merge all safe groups ({0})',
+    group_count: '{0} contacts',
+    confidence_badge: 'Confidence: {0}',
+    conf_high: 'High',
+    conf_medium: 'Medium',
+    conf_low: 'Low',
+    chip_hint: 'Choose primary with the radio button',
+    card_phone: 'Phone',
+    card_email: 'Email',
+    card_org: 'Organization',
+    card_note: 'Note',
+    card_other: 'Other',
+    keep_primary: 'Keep as primary',
+    merge_selected: 'Merge selected ({0})',
+    dismiss_group: 'Dismiss – not duplicates',
+    trash_empty: 'Trash is empty.',
+    trash_info: '{0} contacts in trash – they are not exported.',
+    empty_trash: 'Empty trash permanently',
+    restore: 'Restore',
+    purge: 'Delete permanently',
+    edit_title: 'Edit contact',
+    fld_name: 'Name',
+    fld_org: 'Organization (semicolon between fields, e.g. Company;Department)',
+    fld_title: 'Title',
+    fld_tels: 'Phone numbers (one per line)',
+    fld_emails: 'Email addresses (one per line)',
+    fld_note: 'Note',
+    cancel: 'Cancel',
+    save: 'Save',
+    toast_updated: 'Contact updated.',
+    toast_trashed: 'Contact moved to trash.',
+    toast_restored: 'Contact restored.',
+    toast_need_two: 'Select at least two contacts to merge.',
+    toast_merged: 'Merged {0} contacts into one. The merged cards are in the trash if you change your mind.',
+    toast_no_safe: 'No high-confidence groups.',
+    toast_safe_merged: 'Merged {0} high-confidence duplicate groups. The originals are in the trash.',
+    toast_read_error: 'Could not read {0}',
+    toast_no_contacts: 'No contacts found in the files.',
+    toast_loaded: '{0} contacts loaded ({1} total).',
+    toast_dismissed: 'Group dismissed.',
+    toast_bulk_trashed: 'Selected contacts moved to trash.',
+    toast_trash_emptied: 'Trash emptied.',
+    toast_nothing_export: 'No contacts to export.',
+    toast_vcf_dl: 'VCF downloaded – {0} contacts.',
+    toast_csv_dl: 'CSV downloaded – {0} contacts.',
+    filename_vcf: 'contacts-cleaned.vcf',
+    filename_csv: 'contacts.csv',
+    csv_name: 'Name', csv_given: 'First name', csv_family: 'Last name', csv_phone: 'Phone', csv_email: 'Email', csv_org: 'Organization', csv_note: 'Note',
+    reason_email: 'same email',
+    reason_phone: 'same phone number',
+    reason_name_exact: 'exact same name',
+    reason_name_similar: 'similar name',
+    reason_name_last: 'same last name + first initial',
+    reason_org: 'same organization'
+  }
+};
+
+let LANG = 'sv';
+function detectLang() {
+  try {
+    if (typeof location !== 'undefined') {
+      const q = new URLSearchParams(location.search).get('lang');
+      if (q === 'sv' || q === 'en') return q;
+      const m = location.pathname.match(/\/(sv|en)(?:[\/?#]|$)/i);
+      if (m) return m[1].toLowerCase();
+    }
+  } catch (e) {}
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const s = localStorage.getItem('vcf-rensare-lang');
+      if (s === 'sv' || s === 'en') return s;
+    }
+  } catch (e) {}
+  try {
+    if (typeof navigator !== 'undefined' && navigator.language) {
+      return navigator.language.toLowerCase().indexOf('sv') === 0 ? 'sv' : 'en';
+    }
+  } catch (e) {}
+  return 'sv';
+}
+LANG = detectLang();
+
+function t(key) {
+  const dict = I18N[LANG] || I18N.sv;
+  let s = Object.prototype.hasOwnProperty.call(dict, key) ? dict[key]
+    : (Object.prototype.hasOwnProperty.call(I18N.sv, key) ? I18N.sv[key] : key);
+  for (let i = 1; i < arguments.length; i++) {
+    s = s.split('{' + (i - 1) + '}').join(String(arguments[i]));
+  }
+  return s;
+}
+
+function splitUnescaped(v, sep) {
+  const out = [];
+  let cur = '';
+  for (let i = 0; i < v.length; i++) {
+    const ch = v.charAt(i);
+    if (ch === '\\' && i + 1 < v.length) { cur += ch + v.charAt(i + 1); i++; }
+    else if (ch === sep) { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+
+function splitOutsideQuotes(s, sep) {
+  const out = [];
+  let cur = '';
+  let inQuote = false;
+  for (const ch of s) {
+    if (ch === '"') { inQuote = !inQuote; cur += ch; }
+    else if (ch === sep && !inQuote) { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+
+function decodeQP(str) {
+  const bytes = [];
+  const enc = new TextEncoder();
+  for (let i = 0; i < str.length; i++) {
+    const two = str.slice(i + 1, i + 3);
+    if (str.charAt(i) === '=' && /^[0-9A-Fa-f]{2}$/.test(two)) {
+      bytes.push(parseInt(two, 16));
+      i += 2;
+    } else {
+      const code = str.charCodeAt(i);
+      if (code < 128) bytes.push(code);
+      else bytes.push(...enc.encode(str.charAt(i)));
+    }
+  }
+  return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
+}
+
+const STRUCTURED_PROPS = ['N', 'ADR', 'ORG'];
+
+function parseProperty(line) {
+  let namePart = line;
+  let value = '';
+  let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line.charAt(i);
+    if (ch === '"') inQuote = !inQuote;
+    else if (ch === ':' && !inQuote) { namePart = line.slice(0, i); value = line.slice(i + 1); break; }
+  }
+  const parts = splitOutsideQuotes(namePart, ';');
+  let head = parts[0].trim().toUpperCase();
+  let group = null;
+  const dot = head.indexOf('.');
+  if (dot > 0) { group = head.slice(0, dot); head = head.slice(dot + 1); }
+  const params = {};
+  for (let i = 1; i < parts.length; i++) {
+    const p = parts[i];
+    const eq = p.indexOf('=');
+    if (eq === -1) {
+      const v = p.trim().toUpperCase();
+      if (v) (params.TYPE = params.TYPE || []).push(v);
+    } else {
+      const key = p.slice(0, eq).trim().toUpperCase();
+      const val = p.slice(eq + 1).replace(/^"|"$/g, '');
+      (params[key] = params[key] || []).push(...val.split(',').map(s => s.trim()).filter(Boolean));
+    }
+  }
+  const prop = { group, name: head, params, value, binary: false };
+  const encodings = params.ENCODING || [];
+  if (encodings.some(e => e.toUpperCase() === 'QUOTED-PRINTABLE')) {
+    prop.value = decodeQP(value);
+    delete params.ENCODING;
+    delete params.CHARSET;
+  } else if (encodings.some(e => e.toUpperCase() === 'B') || encodings.some(e => e.toUpperCase() === 'BASE64')) {
+    prop.binary = true;
+  }
+  if (['PHOTO', 'LOGO', 'SOUND', 'KEY'].includes(head) && (params.VALUE || []).join('').toUpperCase() !== 'URI') prop.binary = true;
+  if (!prop.binary && !STRUCTURED_PROPS.includes(head)) prop.value = unescapeText(prop.value);
+  return prop;
+}
+
+let contactSeq = 0;
+
+function parseVCF(text) {
+  const raw = text.split(/\r\n|\r|\n/);
+  const lines = [];
+  for (let i = 0; i < raw.length; i++) {
+    let line = raw[i];
+    if (/ENCODING\s*=\s*"?QUOTED-PRINTABLE"?/i.test(line)) {
+      while (line.charAt(line.length - 1) === '=' && i + 1 < raw.length) {
+        let next = raw[++i];
+        if (next.charAt(0) === ' ' || next.charAt(0) === '\t') next = next.slice(1);
+        line = line.slice(0, -1) + next;
+      }
+    }
+    if ((line.charAt(0) === ' ' || line.charAt(0) === '\t') && lines.length) {
+      lines[lines.length - 1] += line.slice(1);
+    } else {
+      lines.push(line);
+    }
+  }
+  const cards = [];
+  let cur = null;
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const upper = line.toUpperCase();
+    if (upper.indexOf('BEGIN:VCARD') === 0) { cur = []; continue; }
+    if (upper.indexOf('END:VCARD') === 0) { if (cur && cur.length) cards.push(cur); cur = null; continue; }
+    if (cur) cur.push(parseProperty(line));
+  }
+  return cards.map(props => ({ id: 'c' + (++contactSeq), props, trashed: false }));
+}
+
+function unescapeText(v) {
+  return v.replace(/\\(.)/g, (m, ch) => (ch === 'n' || ch === 'N') ? '\n' : ch);
+}
+
+function escapeText(v) {
+  return v.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+}
+
+function getProps(c, name) { return c.props.filter(p => p.name === name); }
+function getValues(c, name) { return getProps(c, name).map(p => p.value); }
+
+function contactFN(c) { const v = getValues(c, 'FN'); return v.length ? v[0].trim() : ''; }
+
+function contactName(c) {
+  const fn = contactFN(c);
+  if (fn) return fn;
+  const n = getValues(c, 'N');
+  if (n.length && n[0].trim()) {
+    const parts = n[0].split(';');
+    return ((parts[1] || '') + ' ' + (parts[0] || '')).trim();
+  }
+  const em = contactEmails(c);
+  if (em.length) return em[0];
+  const ph = contactPhones(c);
+  if (ph.length) return ph[0];
+  return '';
+}
+
+function contactEmails(c) { return getValues(c, 'EMAIL').map(e => e.toLowerCase().trim()).filter(Boolean); }
+function contactPhones(c) { return getValues(c, 'TEL').map(t => t.trim()).filter(Boolean); }
+function contactOrg(c) { const o = getValues(c, 'ORG'); return o.length ? o[0].replace(/;+/g, ', ').trim() : ''; }
+function contactNote(c) { const n = getValues(c, 'NOTE'); return n.length ? n.join('\n').trim() : ''; }
+function contactVersion(c) { const v = getValues(c, 'VERSION'); return v.length ? v[0] : '?'; }
+
+function stripDiacritics(s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function normName(s) { return stripDiacritics(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function normEmail(s) { return (s || '').toLowerCase().trim(); }
+function normPhone(s) {
+  let d = (s || '').replace(/[^\d+]/g, '');
+  if (d.indexOf('+') === 0) d = d.slice(1);
+  else if (d.indexOf('00') === 0) d = d.slice(2);
+  return d;
+}
+function phoneKey(s) {
+  const d = normPhone(s);
+  if (d.length < 7) return '';
+  return d.slice(-9);
+}
+
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = new Array(b.length + 1);
+  let curr = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+    }
+    const tmp = prev; prev = curr; curr = tmp;
+  }
+  return prev[b.length];
+}
+
+function nameSimilarity(a, b) {
+  if (!a || !b) return 0;
+  const d = levenshtein(a, b);
+  return 1 - d / Math.max(a.length, b.length);
+}
+
+function contactKey(c) {
+  return {
+    name: normName(contactName(c)),
+    emails: new Set(contactEmails(c)),
+    phones: new Set(contactPhones(c).map(phoneKey).filter(Boolean)),
+    org: normName(contactOrg(c))
+  };
+}
+
+function pairScore(a, b) {
+  let score = 0;
+  const reasons = [];
+  const emailHit = [...a.emails].some(e => b.emails.has(e));
+  const phoneHit = [...a.phones].some(p => b.phones.has(p));
+  if (emailHit) { score += 3; reasons.push(t('reason_email')); }
+  if (phoneHit) { score += 3; reasons.push(t('reason_phone')); }
+  if (a.name && a.name === b.name) { score += 2; reasons.push(t('reason_name_exact')); }
+  else if (a.name && b.name) {
+    if (nameSimilarity(a.name, b.name) >= 0.87) { score += 1.6; reasons.push(t('reason_name_similar')); }
+    else {
+      const ta = a.name.split(' ').filter(Boolean);
+      const tb = b.name.split(' ').filter(Boolean);
+      if (ta.length && tb.length && ta[ta.length - 1] === tb[tb.length - 1] && ta[0].charAt(0) === tb[0].charAt(0)) {
+        score += 1.6;
+        reasons.push(t('reason_name_last'));
+      }
+    }
+  }
+  if (a.org && a.org === b.org && a.org.length > 2) { score += 0.5; reasons.push(t('reason_org')); }
+  return { score, reasons };
+}
+
+let groupSeq = 0;
+
+function findDuplicateGroups(contacts) {
+  const items = contacts.filter(c => !c.trashed);
+  const keys = items.map(contactKey);
+  const parent = items.map((_, i) => i);
+  const find = i => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      if (pairScore(keys[i], keys[j]).score >= 3) {
+        const a = find(i), b = find(j);
+        if (a !== b) parent[b] = a;
+      }
+    }
+  }
+  const buckets = new Map();
+  items.forEach((c, i) => {
+    const r = find(i);
+    if (!buckets.has(r)) buckets.set(r, []);
+    buckets.get(r).push(i);
+  });
+  const groups = [];
+  for (const idxs of buckets.values()) {
+    if (idxs.length < 2) continue;
+    let best = 0;
+    const reasonSet = new Set();
+    for (let a = 0; a < idxs.length; a++) {
+      for (let b = a + 1; b < idxs.length; b++) {
+        const r = pairScore(keys[idxs[a]], keys[idxs[b]]);
+        if (r.score > best) best = r.score;
+        r.reasons.forEach(x => reasonSet.add(x));
+      }
+    }
+    const confidence = best >= 5 ? 'high' : (best >= 3.5 ? 'medium' : 'low');
+    groups.push({
+      id: 'g' + (++groupSeq),
+      contacts: idxs.map(i => items[i]),
+      confidence,
+      reasons: [...reasonSet]
+    });
+  }
+  groups.sort((a, b) => (b.contacts.length - a.contacts.length) || (b.confidence === 'high' ? 1 : -1));
+  return groups;
+}
+
+function cloneProp(p) {
+  return { group: p.group || null, name: p.name, params: Object.assign({}, p.params), value: p.value, binary: !!p.binary };
+}
+
+function propSig(p) {
+  const ps = Object.keys(p.params).sort().map(k => k + '=' + p.params[k].map(x => String(x).toUpperCase()).sort().join(',')).join(';');
+  let val;
+  if (p.name === 'TEL') val = normPhone(p.value);
+  else if (p.binary) val = '#first-binary';
+  else val = p.value.toLowerCase().replace(/\s+/g, ' ').trim();
+  return p.name + '|' + ps + '|' + val;
+}
+
+const MERGE_SKIP = ['VERSION', 'REV', 'PRODID', 'UID'];
+
+function mergeContacts(list) {
+  const base = list[0];
+  const props = base.props.map(cloneProp);
+  const seen = new Set(props.map(propSig));
+  for (let i = 1; i < list.length; i++) {
+    for (const p of list[i].props) {
+      if (MERGE_SKIP.includes(p.name)) continue;
+      if (p.name === 'FN' || p.name === 'N') continue;
+      const key = propSig(p);
+      if (!seen.has(key)) { seen.add(key); props.push(cloneProp(p)); }
+    }
+  }
+  if (!props.some(p => p.name === 'FN')) {
+    for (let i = 1; i < list.length; i++) {
+      const fn = list[i].props.find(p => p.name === 'FN');
+      if (fn) { props.unshift(cloneProp(fn)); break; }
+    }
+  }
+  if (!props.some(p => p.name === 'N')) {
+    for (let i = 1; i < list.length; i++) {
+      const n = list[i].props.find(p => p.name === 'N');
+      if (n) {
+        const nn = cloneProp(n);
+        const fnIdx = props.findIndex(p => p.name === 'FN');
+        if (fnIdx >= 0) props.splice(fnIdx + 1, 0, nn); else props.unshift(nn);
+        break;
+      }
+    }
+  }
+  if (!props.some(p => p.name === 'N')) {
+    const fnProp = props.find(p => p.name === 'FN');
+    if (fnProp) {
+      const parts = fnProp.value.trim().split(/\s+/).filter(Boolean);
+      const given = parts.shift() || '';
+      const nn = { group: null, name: 'N', params: {}, value: parts.join(' ') + ';' + given };
+      const fnIdx = props.findIndex(p => p.name === 'FN');
+      if (fnIdx >= 0) props.splice(fnIdx + 1, 0, nn); else props.unshift(nn);
+    }
+  }
+  return { id: base.id, props, trashed: false };
+}
+
+const PROP_ORDER = ['FN', 'N', 'NICKNAME', 'ORG', 'TITLE', 'ROLE', 'TEL', 'EMAIL', 'ADR', 'URL', 'BDAY', 'ANNIVERSARY', 'NOTE', 'PHOTO', 'LOGO'];
+const WRITE_SKIP = ['VERSION', 'REV', 'PRODID'];
+
+function orderProps(props) {
+  const rank = p => {
+    const i = PROP_ORDER.indexOf(p.name);
+    return i === -1 ? 50 : i;
+  };
+  return props.slice().sort((a, b) => (rank(a) - rank(b)) || a.name.localeCompare(b.name));
+}
+
+function serializeProp(p) {
+  let s = (p.group ? p.group + '.' : '') + p.name;
+  for (const k of Object.keys(p.params).sort()) {
+    const vals = p.params[k];
+    s += ';' + k + '=' + vals.map(v => /[,;:"\\]/.test(v) ? '"' + v + '"' : v).join(',');
+  }
+  let raw;
+  if (p.binary) raw = p.value.replace(/\s+/g, '');
+  else if (STRUCTURED_PROPS.includes(p.name)) {
+    raw = splitUnescaped(p.value, ';').map(c => escapeText(unescapeText(c))).join(';');
+  } else raw = escapeText(p.value);
+  return s + ':' + raw;
+}
+
+const textEncoder = new TextEncoder();
+
+function foldLine(line) {
+  if (textEncoder.encode(line).length <= 75) return [line];
+  const parts = [];
+  let cur = '';
+  let curBytes = 0;
+  let limit = 75;
+  for (const ch of line) {
+    const b = textEncoder.encode(ch).length;
+    if (curBytes + b > limit) {
+      parts.push(cur);
+      cur = ' ' + ch;
+      curBytes = 1 + b;
+      limit = 74;
+    } else {
+      cur += ch;
+      curBytes += b;
+    }
+  }
+  parts.push(cur);
+  return parts;
+}
+
+function serializeVCF(contacts) {
+  const out = [];
+  for (const c of contacts) {
+    if (c.trashed) continue;
+    out.push('BEGIN:VCARD');
+    out.push('VERSION:3.0');
+    for (const p of orderProps(c.props)) {
+      if (WRITE_SKIP.includes(p.name)) continue;
+      for (const line of foldLine(serializeProp(p))) out.push(line);
+    }
+    out.push('END:VCARD');
+  }
+  return out.join('\r\n') + '\r\n';
+}
+
+function csvCell(v) {
+  v = String(v == null ? '' : v);
+  return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+
+function serializeCSV(contacts) {
+  const rows = [[t('csv_name'), t('csv_given'), t('csv_family'), t('csv_phone'), t('csv_email'), t('csv_org'), t('csv_note')]];
+  for (const c of contacts) {
+    if (c.trashed) continue;
+    const n = getValues(c, 'N');
+    const parts = n.length ? n[0].split(';') : [];
+    rows.push([
+      contactName(c),
+      (parts[1] || '').trim(),
+      (parts[0] || '').trim(),
+      contactPhones(c).join('; '),
+      getValues(c, 'EMAIL').join('; '),
+      contactOrg(c),
+      contactNote(c).replace(/\r?\n/g, ' ')
+    ]);
+  }
+  return rows.map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+}
+
+const api = {
+  parseVCF, serializeVCF, serializeCSV, findDuplicateGroups, mergeContacts,
+  contactName, contactEmails, contactPhones, contactOrg, contactNote, contactVersion,
+  normPhone, phoneKey, normName, normEmail, stripDiacritics, unescapeText, escapeText,
+  getValues, getProps, pairScore, contactKey, t, I18N,
+  setLang: function (l) { LANG = (l === 'en' || l === 'sv') ? l : 'sv'; },
+  getLang: function () { return LANG; }
+};
+if (typeof globalThis !== 'undefined') globalThis.VCFCleaner = api;
+
+if (typeof document === 'undefined' || typeof window === 'undefined') return;
+
+const state = {
+  contacts: [],
+  groups: [],
+  dismissed: new Set(),
+  view: 'contacts',
+  search: '',
+  selected: new Set()
+};
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+let toastTimer = null;
+function toast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isErr);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function groupKey(g) {
+  return g.contacts.map(c => c.id).sort().join('|');
+}
+
+function activeContacts() {
+  return state.contacts.filter(c => !c.trashed);
+}
+
+function trashContacts() {
+  return state.contacts.filter(c => c.trashed);
+}
+
+function recompute() {
+  const groups = findDuplicateGroups(activeContacts());
+  state.groups = groups.filter(g => !state.dismissed.has(groupKey(g)));
+  render();
+}
+
+function download(filename, content, mime) {
+  const blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function contactSummary(c) {
+  const bits = [];
+  contactPhones(c).forEach(p => bits.push(p));
+  contactEmails(c).forEach(e => bits.push(e));
+  if (contactOrg(c)) bits.push(contactOrg(c));
+  return bits.join(' · ');
+}
+
+function matchesSearch(c, q) {
+  if (!q) return true;
+  const hay = [contactName(c), contactOrg(c), contactNote(c)]
+    .concat(contactPhones(c), contactEmails(c))
+    .join(' ').toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+}
+
+function renderStats() {
+  const n = activeContacts().length;
+  const tr = trashContacts().length;
+  document.getElementById('stats').textContent = t('stats', n, state.groups.length, tr);
+  document.getElementById('badge-dupes').textContent = state.groups.length;
+  document.getElementById('badge-trash').textContent = tr;
+}
+
+function renderTabs() {
+  document.querySelectorAll('nav.tabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === state.view);
+  });
+}
+
+function renderContacts() {
+  const view = document.getElementById('view');
+  const q = state.search.trim();
+  const list = activeContacts()
+    .filter(c => matchesSearch(c, q))
+    .sort((a, b) => contactName(a).localeCompare(contactName(b), 'sv'));
+  if (!list.length) {
+    view.innerHTML = '<div class="panel"><div class="empty">' +
+      (q ? t('empty_search') : t('empty_none')) +
+      '</div></div>';
+    document.getElementById('bulk-bar').style.display = 'none';
+    return;
+  }
+  let html = '<div class="panel"><table><thead><tr>' +
+    '<th style="width:34px"><input type="checkbox" id="sel-all" aria-label="' + esc(t('col_select_all')) + '"></th>' +
+    '<th>' + esc(t('col_name')) + '</th><th>' + esc(t('col_phone')) + '</th><th>' + esc(t('col_email')) + '</th><th>' + esc(t('col_org')) + '</th><th></th>' +
+    '</tr></thead><tbody>';
+  for (const c of list) {
+    const name = contactName(c) || t('no_name');
+    const phones = contactPhones(c);
+    const emails = contactEmails(c);
+    html += '<tr data-cid="' + esc(c.id) + '">' +
+      '<td><input type="checkbox" class="sel-check" data-cid="' + esc(c.id) + '"' + (state.selected.has(c.id) ? ' checked' : '') + '></td>' +
+      '<td><strong>' + esc(name) + '</strong>' +
+      (contactNote(c) ? '<div class="sub">' + esc(contactNote(c).slice(0, 90)) + (contactNote(c).length > 90 ? '…' : '') + '</div>' : '') +
+      '<div class="sub">' + esc(t('sub_fields', contactVersion(c), c.props.length)) + '</div></td>' +
+      '<td>' + (phones.map(esc).join('<br>') || '<span class="sub">–</span>') + '</td>' +
+      '<td>' + (emails.map(esc).join('<br>') || '<span class="sub">–</span>') + '</td>' +
+      '<td>' + (contactOrg(c) ? esc(contactOrg(c)) : '<span class="sub">–</span>') + '</td>' +
+      '<td class="row-actions">' +
+      '<button class="small" data-action="edit" data-cid="' + esc(c.id) + '">' + esc(t('edit')) + '</button> ' +
+      '<button class="small danger" data-action="trash" data-cid="' + esc(c.id) + '" title="' + esc(t('move_to_trash')) + '">🗑</button>' +
+      '</td></tr>';
+  }
+  html += '</tbody></table></div>';
+  view.innerHTML = html;
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const n = state.selected.size;
+  bar.style.display = n ? 'flex' : 'none';
+  document.getElementById('bulk-info').textContent = t('bulk_info', n);
+}
+
+function renderDupes() {
+  const view = document.getElementById('view');
+  document.getElementById('bulk-bar').style.display = 'none';
+  if (!state.groups.length) {
+    view.innerHTML = '<div class="panel"><div class="empty">' + esc(t('dupes_none')) + '</div></div>';
+    return;
+  }
+  const safeCount = state.groups.filter(g => g.confidence === 'high').length;
+  let html = '';
+  if (safeCount) {
+    html += '<div class="toolbar" style="margin-top:0"><span class="stats">' + esc(t('safe_found', safeCount)) + '</span>' +
+      '<button class="primary" data-action="merge-safe">' + esc(t('merge_safe', safeCount)) + '</button></div>';
+  }
+  for (const g of state.groups) {
+    const confClass = g.confidence;
+    const confLabel = t('conf_' + confClass);
+    html += '<div class="group-card" data-gid="' + esc(g.id) + '">' +
+      '<div class="group-head"><span class="title">' + esc(t('group_count', g.contacts.length)) + '</span>' +
+      '<span class="badge ' + confClass + '">' + esc(t('confidence_badge', confLabel)) + '</span>' +
+      g.reasons.map(r => '<span class="chip">' + esc(r) + '</span>').join('') +
+      '<span class="chip">' + esc(t('chip_hint')) + '</span>' +
+      '</div><div class="dupe-grid">';
+    g.contacts.forEach((c, i) => {
+      const name = contactName(c) || t('no_name');
+      html += '<div class="dupe-card">' +
+        '<div class="top"><input type="checkbox" class="dupe-check" data-gid="' + esc(g.id) + '" data-cid="' + esc(c.id) + '" checked>' +
+        '<input type="radio" name="primary-' + esc(g.id) + '" value="' + esc(c.id) + '"' + (i === 0 ? ' checked' : '') + ' title="' + esc(t('keep_primary')) + '">' +
+        '<span class="nm">' + esc(name) + '</span></div>' +
+        '<dl>' +
+        (contactPhones(c).length ? '<dt>' + esc(t('card_phone')) + '</dt><dd>' + contactPhones(c).map(esc).join('<br>') + '</dd>' : '') +
+        (contactEmails(c).length ? '<dt>' + esc(t('card_email')) + '</dt><dd>' + contactEmails(c).map(esc).join('<br>') + '</dd>' : '') +
+        (contactOrg(c) ? '<dt>' + esc(t('card_org')) + '</dt><dd>' + esc(contactOrg(c)) + '</dd>' : '') +
+        (contactNote(c) ? '<dt>' + esc(t('card_note')) + '</dt><dd>' + esc(contactNote(c).slice(0, 140)) + '</dd>' : '') +
+        '<dt>' + esc(t('card_other')) + '</dt><dd>' + esc(t('sub_fields', contactVersion(c), c.props.length)) + '</dd>' +
+        '</dl></div>';
+    });
+    html += '</div><div class="group-foot">' +
+      '<button class="primary" data-action="merge-group" data-gid="' + esc(g.id) + '">' + esc(t('merge_selected', g.contacts.length)) + '</button>' +
+      '<button data-action="dismiss-group" data-gid="' + esc(g.id) + '">' + esc(t('dismiss_group')) + '</button>' +
+      '</div></div>';
+  }
+  view.innerHTML = html;
+}
+
+function renderTrash() {
+  const view = document.getElementById('view');
+  document.getElementById('bulk-bar').style.display = 'none';
+  const list = trashContacts();
+  if (!list.length) {
+    view.innerHTML = '<div class="panel"><div class="empty">' + esc(t('trash_empty')) + '</div></div>';
+    return;
+  }
+  let html = '<div class="toolbar" style="margin-top:0"><span class="stats">' + esc(t('trash_info', list.length)) + '</span>' +
+    '<button class="danger" data-action="empty-trash">' + esc(t('empty_trash')) + '</button></div>' +
+    '<div class="panel">';
+  for (const c of list) {
+    html += '<div class="trash-row">' +
+      '<div class="info"><div class="nm">' + esc(contactName(c) || t('no_name')) + '</div>' +
+      '<div class="sub">' + esc(contactSummary(c)) + '</div></div>' +
+      '<button class="small" data-action="restore" data-cid="' + esc(c.id) + '">' + esc(t('restore')) + '</button>' +
+      '<button class="small danger" data-action="purge" data-cid="' + esc(c.id) + '">' + esc(t('purge')) + '</button>' +
+      '</div>';
+  }
+  html += '</div>';
+  view.innerHTML = html;
+}
+
+function render() {
+  renderStats();
+  renderTabs();
+  if (state.view === 'contacts') renderContacts();
+  else if (state.view === 'dupes') renderDupes();
+  else renderTrash();
+}
+
+function openEdit(cid) {
+  const c = state.contacts.find(x => x.id === cid);
+  if (!c) return;
+  const modal = document.getElementById('modal');
+  modal.innerHTML =
+    '<div class="modal-box"><h2>' + esc(t('edit_title')) + '</h2><form id="edit-form" data-cid="' + esc(cid) + '">' +
+    '<label for="ef-fn">' + esc(t('fld_name')) + '</label><input type="text" id="ef-fn" name="fn" value="' + esc(contactName(c)) + '">' +
+    '<label for="ef-org">' + esc(t('fld_org')) + '</label><input type="text" id="ef-org" name="org" value="' + esc(getValues(c, 'ORG')[0] || '') + '">' +
+    '<label for="ef-title">' + esc(t('fld_title')) + '</label><input type="text" id="ef-title" name="title" value="' + esc(getValues(c, 'TITLE')[0] || '') + '">' +
+    '<label for="ef-tels">' + esc(t('fld_tels')) + '</label><textarea id="ef-tels" name="tels" rows="3">' + esc(contactPhones(c).join('\n')) + '</textarea>' +
+    '<label for="ef-emails">' + esc(t('fld_emails')) + '</label><textarea id="ef-emails" name="emails" rows="3">' + esc(getValues(c, 'EMAIL').join('\n')) + '</textarea>' +
+    '<label for="ef-note">' + esc(t('fld_note')) + '</label><textarea id="ef-note" name="note" rows="3">' + esc(contactNote(c)) + '</textarea>' +
+    '<div class="modal-actions"><button type="button" data-action="close-modal">' + esc(t('cancel')) + '</button>' +
+    '<button type="submit" class="primary">' + esc(t('save')) + '</button></div></form></div>';
+  modal.classList.add('open');
+  document.getElementById('ef-fn').focus();
+}
+
+function saveEdit(cid, form) {
+  const c = state.contacts.find(x => x.id === cid);
+  if (!c) return;
+  const fn = form.elements.fn.value.trim();
+  const tels = form.elements.tels.value.split('\n').map(s => s.trim()).filter(Boolean);
+  const emails = form.elements.emails.value.split('\n').map(s => s.trim()).filter(Boolean);
+  const hadN = c.props.some(p => p.name === 'N');
+  const props = c.props.filter(p => ['FN', 'N', 'TEL', 'EMAIL', 'ORG', 'TITLE', 'NOTE'].indexOf(p.name) === -1);
+  const mk = (name, value) => ({ group: null, name, params: {}, value });
+  if (fn) {
+    props.unshift(mk('FN', fn));
+    if (hadN) {
+      const parts = fn.split(/\s+/);
+      const given = parts.shift() || '';
+      props.splice(1, 0, mk('N', parts.join(' ') + ';' + given));
+    }
+  }
+  tels.forEach(t => props.push(mk('TEL', t)));
+  emails.forEach(e => props.push(mk('EMAIL', e)));
+  if (form.elements.org.value.trim()) props.push(mk('ORG', form.elements.org.value.trim()));
+  if (form.elements.title.value.trim()) props.push(mk('TITLE', form.elements.title.value.trim()));
+  if (form.elements.note.value.trim()) props.push(mk('NOTE', form.elements.note.value.trim()));
+  c.props = props;
+  closeModal();
+  recompute();
+  toast(t('toast_updated'));
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('modal').innerHTML = '';
+}
+
+function trashContact(cid) {
+  const c = state.contacts.find(x => x.id === cid);
+  if (!c) return;
+  c.trashed = true;
+  state.selected.delete(cid);
+  recompute();
+  toast(t('toast_trashed'));
+}
+
+function restoreContact(cid) {
+  const c = state.contacts.find(x => x.id === cid);
+  if (!c) return;
+  c.trashed = false;
+  recompute();
+  toast(t('toast_restored'));
+}
+
+function purgeContact(cid) {
+  state.contacts = state.contacts.filter(x => x.id !== cid);
+  state.selected.delete(cid);
+  recompute();
+}
+
+function mergeGroupById(gid) {
+  const g = state.groups.find(x => x.id === gid);
+  if (!g) return;
+  const checkedBoxes = Array.from(document.querySelectorAll('.dupe-check[data-gid="' + gid + '"]:checked'));
+  const checked = checkedBoxes.map(cb => cb.dataset.cid);
+  if (checked.length < 2) { toast(t('toast_need_two'), true); return; }
+  const radio = document.querySelector('input[name="primary-' + gid + '"]:checked');
+  let primaryId = radio ? radio.value : checked[0];
+  if (checked.indexOf(primaryId) === -1) primaryId = checked[0];
+  const byId = {};
+  state.contacts.forEach(c => { byId[c.id] = c; });
+  const ordered = [byId[primaryId]].concat(checked.filter(id => id !== primaryId).map(id => byId[id]));
+  const merged = mergeContacts(ordered);
+  const others = ordered.slice(1);
+  state.contacts = state.contacts.map(c => {
+    if (c.id === primaryId) return merged;
+    if (others.indexOf(c) !== -1) { c.trashed = true; }
+    return c;
+  });
+  others.forEach(c => state.selected.delete(c.id));
+  state.dismissed.add(groupKey(g));
+  recompute();
+  toast(t('toast_merged', ordered.length));
+}
+
+function mergeAllSafe() {
+  const safe = state.groups.filter(g => g.confidence === 'high');
+  if (!safe.length) { toast(t('toast_no_safe'), true); return; }
+  const byId = {};
+  state.contacts.forEach(c => { byId[c.id] = c; });
+  const toTrash = [];
+  for (const g of safe) {
+    const ordered = g.contacts.map(c => byId[c.id]);
+    const merged = mergeContacts(ordered);
+    state.contacts = state.contacts.map(c => (c.id === ordered[0].id ? merged : c));
+    ordered.slice(1).forEach(c => { byId[c.id].trashed = true; toTrash.push(c); });
+    state.dismissed.add(groupKey(g));
+  }
+  recompute();
+  toast(t('toast_safe_merged', safe.length));
+}
+
+async function loadFiles(files) {
+  if (!files || !files.length) return;
+  let all = [];
+  for (const f of files) {
+    try {
+      const text = await f.text();
+      all = all.concat(parseVCF(text));
+    } catch (e) {
+      toast(t('toast_read_error', f.name), true);
+    }
+  }
+  if (!all.length) { toast(t('toast_no_contacts'), true); return; }
+  state.contacts = state.contacts.concat(all);
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('dropzone').classList.add('compact');
+  document.querySelector('#dropzone .big').textContent = t('drop_big_added');
+  document.querySelector('#dropzone .hint').textContent = t('drop_hint_added');
+  recompute();
+  toast(t('toast_loaded', all.length, activeContacts().length));
+}
+
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.title = t('doc_title');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  });
+  document.querySelectorAll('#lang-switch a').forEach(a => {
+    a.classList.toggle('active', a.dataset.lang === LANG);
+  });
+  if (document.getElementById('app') && !document.getElementById('app').classList.contains('hidden')) render();
+}
+
+function initUI() {
+  applyLang();
+  document.querySelectorAll('#lang-switch a').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      LANG = a.dataset.lang;
+      try { localStorage.setItem('vcf-rensare-lang', LANG); } catch (err) {}
+      const url = new URL(location.href);
+      url.searchParams.set('lang', LANG);
+      history.replaceState(null, '', url);
+      applyLang();
+    });
+  });
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+  fileInput.addEventListener('change', () => { loadFiles(fileInput.files); fileInput.value = ''; });
+  ['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('over'); }));
+  dropzone.addEventListener('drop', e => { loadFiles(e.dataTransfer.files); });
+
+  document.getElementById('search').addEventListener('input', e => {
+    state.search = e.target.value;
+    if (state.view === 'contacts') renderContacts();
+  });
+
+  document.querySelectorAll('nav.tabs button').forEach(b => {
+    b.addEventListener('click', () => { state.view = b.dataset.view; render(); });
+  });
+
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    const cid = el.dataset.cid;
+    const gid = el.dataset.gid;
+    if (action === 'edit') openEdit(cid);
+    else if (action === 'trash') trashContact(cid);
+    else if (action === 'restore') restoreContact(cid);
+    else if (action === 'purge') purgeContact(cid);
+    else if (action === 'merge-group') mergeGroupById(gid);
+    else if (action === 'merge-safe') mergeAllSafe();
+    else if (action === 'dismiss-group') {
+      const g = state.groups.find(x => x.id === gid);
+      if (g) { state.dismissed.add(groupKey(g)); recompute(); toast(t('toast_dismissed')); }
+    }
+    else if (action === 'delete-selected') {
+      state.selected.forEach(id => {
+        const c = state.contacts.find(x => x.id === id);
+        if (c) c.trashed = true;
+      });
+      state.selected.clear();
+      recompute();
+      toast(t('toast_bulk_trashed'));
+    }
+    else if (action === 'clear-selection') { state.selected.clear(); renderContacts(); }
+    else if (action === 'empty-trash') {
+      state.contacts = state.contacts.filter(c => !c.trashed);
+      recompute();
+      toast(t('toast_trash_emptied'));
+    }
+    else if (action === 'export-vcf') {
+      const n = activeContacts().length;
+      if (!n) { toast(t('toast_nothing_export'), true); return; }
+      download(t('filename_vcf'), serializeVCF(state.contacts), 'text/vcard;charset=utf-8');
+      toast(t('toast_vcf_dl', n));
+    }
+    else if (action === 'export-csv') {
+      const n = activeContacts().length;
+      if (!n) { toast(t('toast_nothing_export'), true); return; }
+      download(t('filename_csv'), serializeCSV(state.contacts), 'text/csv;charset=utf-8');
+      toast(t('toast_csv_dl', n));
+    }
+    else if (action === 'close-modal') closeModal();
+  });
+
+  document.addEventListener('change', e => {
+    if (e.target.classList && e.target.classList.contains('sel-check')) {
+      const id = e.target.dataset.cid;
+      if (e.target.checked) state.selected.add(id); else state.selected.delete(id);
+      updateBulkBar();
+    }
+    if (e.target.id === 'sel-all') {
+      const on = e.target.checked;
+      document.querySelectorAll('.sel-check').forEach(cb => {
+        cb.checked = on;
+        if (on) state.selected.add(cb.dataset.cid); else state.selected.delete(cb.dataset.cid);
+      });
+      updateBulkBar();
+    }
+  });
+
+  document.addEventListener('submit', e => {
+    if (e.target.id === 'edit-form') {
+      e.preventDefault();
+      saveEdit(e.target.dataset.cid, e.target);
+    }
+  });
+
+  document.getElementById('modal').addEventListener('click', e => {
+    if (e.target.id === 'modal') closeModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+  });
+}
+
+initUI();
+})();
+</script>
+</body>
+</html>
